@@ -1,0 +1,28 @@
+---
+- name: Base configuration for every node
+  hosts: hpc
+  roles:
+    - role: common
+      tags: [common]
+    - role: ssh_hardening
+      tags: [ssh, security]
+    - role: node_exporter
+      tags: [monitoring]
+
+- name: Shared storage
+  hosts: hpc_head
+  roles:
+    - role: nfs_server
+      tags: [nfs]
+
+- name: Mount shared storage on compute nodes
+  hosts: hpc_compute
+  roles:
+    - role: nfs_client
+      tags: [nfs]
+
+- name: Slurm scheduler
+  hosts: hpc
+  roles:
+    - role: slurm
+      tags: [slurm]

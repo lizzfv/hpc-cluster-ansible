@@ -1,0 +1,132 @@
+---
+- name: Make cluster hostnames resolvable on every node
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} ANSIBLE MANAGED HPC HOSTS"
+    block: |
+      {% for host in groups['hpc'] %}
+      {{ hostvars[host].ansible_host }} {{ host }}
+      {% endfor %}
+
+- name: Install MUNGE and Slurm client packages
+  ansible.builtin.dnf:
+    name:
+      - munge
+      - slurm
+    state: present
+
+- name: Install slurmctld on the head node
+  ansible.builtin.dnf:
+    name: slurm-slurmctld
+    state: present
+  when: inventory_hostname in groups['hpc_head']
+
+- name: Install slurmd on compute nodes
+  ansible.builtin.dnf:
+    name: slurm-slurmd
+    state: present
+  when: inventory_hostname in groups['hpc_compute']
+
+- name: Create the slurm system user
+  ansible.builtin.user:
+    name: slurm
+    system: true
+    shell: /sbin/nologin
+    create_home: false
+
+- name: Generate the MUNGE key once, on the head node
+  ansible.builtin.command: /usr/sbin/create-munge-key
+  args:
+    creates: /etc/munge/munge.key
+  delegate_to: "{{ groups['hpc_head'][0] }}"
+  run_once: true
+
+- name: Read the MUNGE key from the head node
+  ansible.builtin.slurp:
+    src: /etc/munge/munge.key
+  delegate_to: "{{ groups['hpc_head'][0] }}"
+  run_once: true
+  register: slurm_munge_key
+  no_log: true
+
+- name: Distribute the MUNGE key to every node
+  ansible.builtin.copy:
+    content: "{{ slurm_munge_key.content | b64decode }}"
+    dest: /etc/munge/munge.key
+    owner: munge
+    group: munge
+    mode: "0400"
+  no_log: true
+  notify: Restart munge
+
+- name: Enable and start munge
+  ansible.builtin.service:
+    name: munge
+    state: started
+    enabled: true
+
+- name: Deploy slurm.conf
+  ansible.builtin.template:
+    src: slurm.conf.j2
+    dest: /etc/slurm/slurm.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Restart slurmctld
+    - Restart slurmd
+
+- name: Create Slurm state directory on the head node
+  ansible.builtin.file:
+    path: /var/spool/slurmctld
+    state: directory
+    owner: slurm
+    group: slurm
+    mode: "0755"
+  when: inventory_hostname in groups['hpc_head']
+
+- name: Create Slurm spool directory on compute nodes
+  ansible.builtin.file:
+    path: /var/spool/slurmd
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: inventory_hostname in groups['hpc_compute']
+
+- name: Open slurmctld port on the head node
+  ansible.posix.firewalld:
+    port: 6817/tcp
+    permanent: true
+    immediate: true
+    state: enabled
+  when: inventory_hostname in groups['hpc_head']
+
+- name: Open the srun callback port range on every node
+  ansible.posix.firewalld:
+    port: "{{ slurm_srun_port_start }}-{{ slurm_srun_port_end }}/tcp"
+    permanent: true
+    immediate: true
+    state: enabled
+
+- name: Open slurmd port on compute nodes
+  ansible.posix.firewalld:
+    port: 6818/tcp
+    permanent: true
+    immediate: true
+    state: enabled
+  when: inventory_hostname in groups['hpc_compute']
+
+- name: Enable and start slurmctld
+  ansible.builtin.service:
+    name: slurmctld
+    state: started
+    enabled: true
+  when: inventory_hostname in groups['hpc_head']
+
+- name: Enable and start slurmd
+  ansible.builtin.service:
+    name: slurmd
+    state: started
+    enabled: true
+  when: inventory_hostname in groups['hpc_compute']

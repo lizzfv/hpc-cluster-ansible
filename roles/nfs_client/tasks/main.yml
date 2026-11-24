@@ -1,0 +1,16 @@
+---
+- name: Install NFS client packages
+  ansible.builtin.dnf:
+    name: nfs-utils
+    state: present
+
+- name: Mount shared filesystems from the head node
+  ansible.posix.mount:
+    src: "{{ hostvars[groups['hpc_head'][0]].ansible_host }}:{{ item.path }}"
+    path: "{{ item.path }}"
+    fstype: nfs
+    opts: "{{ 'ro' if 'ro' in item.options.split(',') else 'rw' }},hard,_netdev"
+    state: mounted
+  loop: "{{ nfs_client_exports }}"
+  loop_control:
+    label: "{{ item.path }}"

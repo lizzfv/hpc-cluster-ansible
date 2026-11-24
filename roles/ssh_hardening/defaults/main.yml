@@ -1,0 +1,4 @@
+---
+ssh_hardening_password_auth: false
+ssh_hardening_permit_root_login: "no"
+ssh_hardening_max_auth_tries: 3

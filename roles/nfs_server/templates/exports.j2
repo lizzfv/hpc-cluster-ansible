@@ -1,0 +1,4 @@
+# Managed by Ansible. Do not edit by hand.
+{% for export in nfs_server_exports %}
+{{ export.path }} {{ nfs_server_network }}({{ export.options }})
+{% endfor %}

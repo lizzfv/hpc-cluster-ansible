@@ -1,0 +1,34 @@
+---
+# --- Common ---
+common_timezone: Europe/Madrid
+common_ntp_servers:
+  - 0.pool.ntp.org
+  - 1.pool.ntp.org
+
+# Local users created on every node (a real cluster would use LDAP/SSSD).
+common_users:
+  - name: hpcuser
+    uid: 2001
+    groups: [wheel]
+    ssh_key: ""   # paste a public key here
+
+# --- SSH hardening ---
+# Make sure a key is installed for your admin user BEFORE disabling passwords.
+ssh_hardening_password_auth: false
+ssh_hardening_permit_root_login: "prohibit-password"
+
+# --- NFS (shared /home and /opt/apps exported by the head node) ---
+nfs_server_exports:
+  - path: /home/shared
+    options: rw,sync,no_root_squash
+  - path: /opt/apps
+    options: ro,sync,no_root_squash
+nfs_server_network: 192.168.10.0/24
+nfs_client_exports: "{{ nfs_server_exports }}"
+
+# --- Slurm ---
+slurm_cluster_name: demo-hpc
+slurm_controller_host: head01
+slurm_node_cpus: 1
+slurm_node_memory_mb: 1700
+slurm_partition_name: batch

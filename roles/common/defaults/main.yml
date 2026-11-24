@@ -1,0 +1,15 @@
+---
+common_timezone: UTC
+common_ntp_servers:
+  - pool.ntp.org
+common_packages:
+  - vim-enhanced
+  - git
+  - tmux
+  - htop
+  - rsync
+  - tar
+  - chrony
+  - firewalld
+  - python3-libselinux
+common_users: []

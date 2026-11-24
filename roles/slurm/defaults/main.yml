@@ -1,0 +1,8 @@
+---
+slurm_cluster_name: demo-hpc
+slurm_controller_host: head01
+slurm_node_cpus: 2
+slurm_node_memory_mb: 3500
+slurm_partition_name: batch
+slurm_srun_port_start: 60001
+slurm_srun_port_end: 60100

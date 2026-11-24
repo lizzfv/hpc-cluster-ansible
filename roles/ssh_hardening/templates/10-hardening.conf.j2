@@ -1,0 +1,6 @@
+# Managed by Ansible. Do not edit by hand.
+PermitRootLogin {{ ssh_hardening_permit_root_login }}
+PasswordAuthentication {{ 'yes' if ssh_hardening_password_auth else 'no' }}
+PubkeyAuthentication yes
+MaxAuthTries {{ ssh_hardening_max_auth_tries }}
+X11Forwarding no
